@@ -3,70 +3,68 @@
 
 (define W 400)
 (define H 200)
-(define F (- H 20))
+(define F (- H 21))
 
 (define player%
   (class object%
+    (super-new)
+    
     (init x0)
     (define x x0)
     (define/public (get-x) x)
     
-    (init y0)
-    (define y y0)
+    (define y F)
     (define/public (get-y) y)
     
-    (init Vx0)
-    (define Vx Vx0)
-    (init Vy0)
-    (define Vy Vy0)
-    (define model (rectangle 20 40 "solid" "maroon"))
+    (define Vx 0)    
+    (define Vy 0)
+
+    (init colour)
+    (define model (rectangle 20 40 "solid" colour))
     (define/public (get-model) model)
+
+    (struct inputs (left up right)
+      #:transparent
+      #:mutable)
+    (define keys (inputs #f #f #f))
+    (define (horiz-socd)
+      (match keys
+        [(inputs #t _ #f) -1]
+        [(inputs #f _ #t) 1]
+        [else 0]))
 
     (define state "stand")
 
-    (super-new)
-
-    
-    (define/public (press key)
-      (case state
-        [("stand")
-         (cond
-           [(key=? key "left") (set! Vx -2)]
-           [(key=? key "right") (set! Vx 2)]
-           [(key=? key "up")
-            (begin
-              (set! Vy 6)
-              (set! state "jump"))])]
-        [("jump") null])
+    (define/public (set-key key val)
+      (cond
+        [(key=? key "left") (set-inputs-left! keys val)]
+        [(key=? key "right") (set-inputs-right! keys val)]
+        [(key=? key "up") (set-inputs-up! keys val)])
       this)
 
-     (define/public (release key)
+    (define/public (move)
       (case state
         [("stand")
-         (cond
-           [(key=? key "left") (set! Vx 0)]
-           [(key=? key "right") (set! Vx 0)])]
-        [("jump") null])
-      this)
-
-    (define/public (move)      
-      (set! x (+ x Vx))
-      (case state
-        [("stand")
-         (if (> Vy 0)
-             (set! state "jump")
-             null)]
+         (case (inputs-up keys)
+           [(#t)
+            (set! Vx (* 2 (horiz-socd)))
+            (set! Vy 6)
+            (set! state "jump")]
+           [else
+            (set! Vx (* 2 (horiz-socd)))
+            (set! x (+ x Vx))])]
         [("jump")
-         (if (and (>= y F) (<= Vy 0))
-             (begin
-               (set! state "stand")
-               (set! y F)
-               (set! Vy 0)
-               (set! Vx 0))
-             (begin
-               (set! y (- y Vy))
-               (set! Vy (sub1 Vy))))])         
+         (cond
+           [(and (>= y F) (<= Vy 0))             
+            (set! y F)
+            (set! Vy 0)
+            (set! state "stand")]             
+           [else
+            (set! x (+ x Vx))
+            (set! y (- y Vy))
+            (set! Vy (- Vy 1))])])
       this)))
+      
 
 (define (draw-players p1)
   (place-image
@@ -78,10 +76,8 @@
 (big-bang
     (new player%
          [x0 (/ W 2)]
-         [y0 F]
-         [Vx0 0]
-         [Vy0 0])
+         [colour "aquamarine"])
   (on-tick (λ (p) (send p move)))
-  (on-key (λ (p key) (send p press key)))
-  (on-release (λ (p key) (send p release key)))
+  (on-key (λ (p key) (send p set-key key #t)))
+  (on-release (λ (p key) (send p set-key key #f)))
   (to-draw draw-players))
