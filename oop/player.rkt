@@ -1,5 +1,6 @@
 #lang racket
 (require 2htdp/universe 2htdp/image)
+(require "../helper-macros.rkt")
 
 (provide player% W H F)
 
@@ -60,42 +61,50 @@
         (build-list 4 (λ(n) 40))
         (range 40 0 (-(/ 40 15))))))
     
-    (struct inputs (left right up mk)
-      #:transparent
-      #:mutable)
+    
 
     ;mapping the controls
-    (init move-left)
-    (init move-right)
-    (init jump)
-    (init med-kick)
-    (define key-map (inputs move-left move-right
-                            jump med-kick))
+    (init left-button)       
+    (init right-button)     
+    (init up-button)
+    (init med-kick-button)
+    (struct keys (left right up mk) #:transparent)
+    (define key-map (keys left-button right-button
+                          up-button med-kick-button))
+    
+    ;the object's internal representation of button presses
+    (define left #f) 
+    (define right #f)   
+    (define up #f)    
+    (define mk #f)    
+    (define mk-interrupt (cons #f #f))     
 
-    ;the object's internal representation of which buttons
-    ;are pressed
-    (define key-state (inputs #f #f #f #f))
+    (define/public (set-key key val)
+      (define (push-shift new interrupt)
+        (cons new (car interrupt)))
+      (cond
+        [(key=? key (keys-left key-map))
+         (set! left val)]
+        [(key=? key (keys-right key-map))
+         (set! right val)]
+        [(key=? key (keys-up key-map))
+         (set! up val)]
+        [(key=? key (keys-mk key-map))
+         (set! mk-interrupt (push-shift val mk-interrupt))
+         (match mk-interrupt
+           [(cons #t #f) (set! mk #t)]
+           [_ void])])
+      this)
+    
     (define (horiz-socd)
-      (match key-state
-        [(inputs #t #f _ _) -1]
-        [(inputs #f #t _ _) 1]
-        [else 0]))
+      (multi-match
+       (left right)
+        [(#t #f) -1]
+        [(#f #t) 1]
+        [(_ _) 0]))
 
     ;the current state of the player
     (define state "stand")
-
-    ;read key presses or releases and modify the key-state
-    (define/public (set-key key val)
-      (cond
-        [(key=? key (inputs-left key-map))
-         (set-inputs-left! key-state val)]
-        [(key=? key (inputs-right key-map))
-         (set-inputs-right! key-state val)]
-        [(key=? key (inputs-up key-map))
-         (set-inputs-up! key-state val)]
-        [(key=? key (inputs-mk key-map))
-         (set-inputs-mk! key-state val)])
-      this)
 
     (define (update-facing other-x)
       (if (<= x other-x)
@@ -109,14 +118,14 @@
         [("stand")
          (update-facing (/ W 2))
          (set! Vx (* 2 (horiz-socd)))
-         (match key-state
-           [(inputs _ _ _ #t)
+         (cond
+           [mk
             (set! state "animating")
             (set! frame-anim kick)]
-           [(inputs _ _ #t _)
+           [up
             (set! Vy 6)
             (set! state "jump")]           
-           [_
+           [else
             (set! x (+ x Vx))])]
         [("jump")
          (cond
@@ -134,4 +143,5 @@
            [(null? frame-anim)
             (set! state "stand")
             (set! frame-anim (list model))])])
+      (set! mk #f)
       this)))

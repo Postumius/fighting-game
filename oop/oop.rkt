@@ -14,10 +14,10 @@
       (new player%
            [x0 (/ W 2)]
            [colour "aquamarine"]
-           [move-left "a"]
-           [move-right "d"]
-           [jump "w"]
-           [med-kick "k"])
+           [left-button "a"]
+           [right-button "d"]
+           [up-button "w"]
+           [med-kick-button "k"])
     (on-tick (λ (p) (send p move)) 1/60)
     (on-key (λ (p key) (send p set-key key #t)))
     (on-release (λ (p key) (send p set-key key #f)))
