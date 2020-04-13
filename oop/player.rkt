@@ -1,5 +1,5 @@
 #lang racket
-(require 2htdp/universe 2htdp/image)
+(require 2htdp/universe 2htdp/image lang/posn)
 (require "../helper-macros.rkt")
 
 (provide player% W H F)
