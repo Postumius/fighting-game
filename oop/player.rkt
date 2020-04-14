@@ -79,6 +79,7 @@
     (define mk #f)    
     (define mk-interrupt (cons #f #f))     
 
+    ;directional keys register holding; attack keys don't
     (define/public (set-key key val)
       (define (push-shift new interrupt)
         (cons new (car interrupt)))
@@ -93,7 +94,8 @@
          (set! mk-interrupt (push-shift val mk-interrupt))
          (match mk-interrupt
            [(cons #t #f) (set! mk #t)]
-           [_ void])])
+           [_ void])]
+        [else void])
       this)
     
     (define (horiz-socd)
@@ -105,7 +107,7 @@
 
     ;the current state of the player
     (define state "stand")
-
+    
     (define (update-facing other-x)
       (if (<= x other-x)
           (set! facing-right #t)
@@ -113,10 +115,10 @@
 
     ;move the player and switch states depending on the
     ;key-state
-    (define/public (move)
+    (define/public (move other-x)
       (case state
         [("stand")
-         (update-facing (/ W 2))
+         (update-facing other-x)
          (set! Vx (* 2 (horiz-socd)))
          (cond
            [mk
