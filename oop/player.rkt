@@ -4,10 +4,7 @@
 
 (provide player% W H F)
 
-;these constants define the size of the canvas
-(define W 600)
-(define H 300)
-
+`
 ;the height of the floor for players
 (define F (- H 41))
 
