@@ -2,7 +2,8 @@
 
 (require 2htdp/universe 2htdp/image lang/posn
          "../helper-macros.rkt"
-         "../geometry.rkt")
+         "../geometry.rkt"
+         racket/promise)
 
 (provide W H player-x player-y player-up make-player get-frame
          read-key move)
@@ -38,32 +39,38 @@
     (range 40 0 (-(/ 40 15))))))
 
 (struct atk (interrupt state key anim))
-(struct model (colour anim))
 (struct player
-  (state x y Vx Vy
+  (state
+   facing
+   x y Vx Vy
    atks
    up left right
-   model))
+   colour
+   anim))
 
 (define
   (make-player x mk-key up-key left-key right-key colour)
   (player
-   'stand x 1 0 0
+   'stand
+   #t
+   x 1 0 0
    (list
     (atk (cons #f #f) #f mk-key (kick colour)))
    (cons up-key #f)
    (cons left-key #f)
    (cons right-key #f)
-   (model colour (list (standing colour)))))
+   colour
+   (list (standing colour))))
 
-(define/contract (get-frame p other-x)
-  (-> player? real? image?)
-  (define frame (car (model-anim (player-model p))))
-  (if (<= (player-x p) other-x)
-         frame
-         (flip-horizontal frame)))
+(define/contract (get-frame p)
+  (-> player? image?)
+  (define frame (car (player-anim p)))
+  (if (player-facing p)
+      frame
+      (flip-horizontal frame)))
 
 
+;read one keyboard input
 (define/contract (read-key p key val)
   (-> player? key-event? boolean? player?)
   (define (read-atks)
@@ -94,44 +101,54 @@
    [left (read-dir (player-left p))]
    [right (read-dir (player-right p))]))
 
+
+;move the player and change states
+(define/contract (move p other-x)
+  (-> player? real? player?)
   
-(define/contract (move p)
-  (-> player? player?)
+  (define (update-facing)
+    (define x (player-x p))
+    (case (player-facing p)
+      [(#t) (if (<= x other-x)
+                #t #f)]
+      [(#f) (if (<= other-x x)
+                #f #t)]))
+  (define horiz-socd
+    (delay
+      (multi-match
+       ([cdr (player-left p)] [cdr (player-right p)])
+       [(#t #f) -1]
+       [(#f #t) 1]
+       [(_ _) 0])))
+  (define (vert-socd)
+    (multi-match
+     ([cdr (player-up p)] 'put-down-here)
+     [(#t _) 1]
+     [(_ _) 0]))
+  (define attack (findf atk-state (player-atks p)))
+  
   (case (player-state p)
-    ['stand   
-     (define horiz-socd
-       (multi-match
-        ([cdr (player-left p)] [cdr (player-right p)])
-        [(#t #f) -1]
-        [(#f #t) 1]
-        [(_ _) 0]))
-     (define vert-socd
-       (multi-match
-        ([cdr (player-up p)] 'put-down-here)
-        [(#t _) 1]
-        [(_ _) 0]))
-     (define attack (findf atk-state (player-atks p)))
+    ['stand        
      (cond
        [attack
         (struct-copy
          player p
          [state 'animate]
-         [model
-          (struct-copy model (player-model p)
-                       [anim (atk-anim attack)])]
+         [anim (atk-anim attack)]
          [atks (map (λ (attack)
                       (struct-copy atk attack [state #f]))
                     (player-atks p))])]
-       [(= vert-socd 1)
+       [(= (vert-socd) 1)
         (struct-copy
          player p
-         [Vx (* 2 horiz-socd)]
+         [Vx (* 2 (force horiz-socd))]
          [Vy 10]
          [state 'jump])]
        [else
         (struct-copy*
          player p
-         [Vx (* 2 horiz-socd)]
+         [facing (update-facing)]
+         [Vx (* 2 (force horiz-socd))]
          [x (+ (player-x p) (player-Vx p))])])]
 
     ['jump
@@ -150,15 +167,15 @@
          [Vy (- (player-Vy p) 1)])])]
 
     ['animate
-     (match (player-model p)
-       [(model colour (cons _ '()))
+     (match (player-anim p)
+       [(cons _ '())
         (struct-copy
          player p
-         [model (model colour (list (standing colour)))]
+         [anim (list (standing (player-colour p)))]
          [state 'stand])]
-       [(model colour (cons _ next-frame))
+       [(cons _ next-frame-anim)
         (struct-copy
          player p
-         [model (model colour next-frame)])])]))
+         [anim next-frame-anim])])]))
      
 
