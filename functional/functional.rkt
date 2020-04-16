@@ -9,11 +9,11 @@
   (match state
     [(game-state p1 p2)
      (place-bottom-left
-      (get-frame p1 (player-x p2))
+      (get-frame p1)
       (player-x p1)
       (player-y p1)
       (place-bottom-left
-       (get-frame p2 (player-x p1))
+       (get-frame p2)
        (player-x p2)
        (player-y p2)
        (empty-scene W H)))]))
@@ -21,7 +21,8 @@
 (define (move-players state)
   (match state
     [(game-state p1 p2)
-     (game-state (move p1) (move p2))]))
+     (game-state (move p1 (player-x p2))
+                 (move p2 (player-x p1)))]))
 
 (define ((send-key val) state key)
   (match state
