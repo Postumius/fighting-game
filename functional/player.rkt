@@ -39,11 +39,13 @@
     (range 40 0 (-(/ 40 15))))))
 
 (struct atk (interrupt state key anim))
+(struct dir-keys (up left right) #:transparent)
 (struct player
   (state
    facing
    x y Vx Vy
    atks
+   dir-keys
    up left right
    colour
    anim))
@@ -56,11 +58,14 @@
    x 1 0 0
    (list
     (atk (cons #f #f) #f mk-key (kick colour)))
-   (cons up-key #f)
-   (cons left-key #f)
-   (cons right-key #f)
+   (dir-keys up-key left-key right-key)
+   #f #f #f
    colour
    (list (standing colour))))
+
+(define p1
+  (make-player
+   0 "s" "w" "a" "d" "aquamarine"))
 
 (define/contract (get-frame p)
   (-> player? image?)
@@ -73,33 +78,38 @@
 ;read one keyboard input
 (define/contract (read-key p key val)
   (-> player? key-event? boolean? player?)
-  (define (read-atks)
-    (define (push-shift new interrupt)
-      (cons new (car interrupt)))
-    (map
-     (λ (attack)
-       (if (key=? key (atk-key attack))
-           (struct-copy*
-            atk attack
-            [interrupt (push-shift val (atk-interrupt attack))]
-            [state
-             (match (atk-interrupt attack)
-               [(cons #t #f) #t]
-               [_ (atk-state attack)])])
-           attack))
-     (player-atks p)))
   
-  (define (read-dir dir)
-    (if (key=? key (car dir))
-        (cons (car dir) val)
-        dir))
-
-  (struct-copy
-   player p
-   [atks (read-atks)]
-   [up (read-dir (player-up p))]
-   [left (read-dir (player-left p))]
-   [right (read-dir (player-right p))]))
+  (define (push-shift new interrupt)
+    (cons new (car interrupt)))
+  (define (read-atks atks)
+    (match atks
+      ['() '()]
+      [(cons a as)
+       (if (key=? key (atk-key a))
+           (cons 
+            (struct-copy*
+             atk a
+             [interrupt (push-shift val (atk-interrupt a))]
+             [state
+              (match (atk-interrupt a)
+                [(cons #t #f) #t]
+                [_ (atk-state a)])])
+            as)
+           (cons a (read-atks as)))]))           
+  
+  (match (player-dir-keys p)
+    [(dir-keys up-key left-key right-key)
+     (cond
+       [(key=? key up-key)
+        (struct-copy player p [up val])]
+       [(key=? key left-key)
+        (struct-copy player p [left val])]
+       [(key=? key right-key)
+        (struct-copy player p [right val])]
+       [else
+        (struct-copy
+         player p
+         [atks (read-atks (player-atks p))])])]))
 
 
 ;move the player and change states
@@ -116,13 +126,13 @@
   (define horiz-socd
     (delay
       (multi-match
-       ([cdr (player-left p)] [cdr (player-right p)])
+       ((player-left p) (player-right p))
        [(#t #f) -1]
        [(#f #t) 1]
        [(_ _) 0])))
   (define (vert-socd)
     (multi-match
-     ([cdr (player-up p)] 'put-down-here)
+     ((player-up p) 'todo-put-down-here)
      [(#t _) 1]
      [(_ _) 0]))
   (define attack (findf atk-state (player-atks p)))
