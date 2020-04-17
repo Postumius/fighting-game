@@ -21,14 +21,14 @@
    40 0
    (rectangle 120 120 "solid" "transparent")))
 
-;a kick animation
-(define (kick colour)
+;a penis fencing animation
+(define (penis-fence colour)
   (map
    (λ (leg-colour w)
-     (beside
-      (rectangle w 80 "solid" (color 255 255 255 0))
-      (standing colour)
-      (rectangle w 20 "solid" leg-colour)))
+     (place-bottom-left
+      (rectangle w 20 "solid" leg-colour)
+      80 25
+      (standing colour)))
    (append
     (build-list 6 (λ(n) colour))
     (build-list 4 (λ(n) "red"))
@@ -57,7 +57,7 @@
    #t
    x 1 0 0
    (list
-    (atk (cons #f #f) #f mk-key (kick colour)))
+    (atk (cons #f #f) #f mk-key (penis-fence colour)))
    (dir-keys up-key left-key right-key)
    #f #f #f
    colour
