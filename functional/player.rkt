@@ -21,18 +21,19 @@
    40 0
    (rectangle 120 120 "solid" "transparent")))
 
-;a penis fencing animation
-(define (penis-fence colour)
+(define sword (bitmap "./resources/bitmaps/sword.png"))
+
+;a kick animation
+(define (kick colour)
   (map
-   (λ (leg-colour w)
+   (λ (w)
      (place-bottom-left
-      (rectangle w 20 "solid" leg-colour)
-      80 25
-      (standing colour)))
-   (append
-    (build-list 6 (λ(n) colour))
-    (build-list 4 (λ(n) "red"))
-    (build-list 15 (λ(n) colour)))
+      (overlay (rotate -90 (triangle 20 "solid" "red"))
+            (rectangle 40 80 "solid" colour))
+      40 0
+      (place-bottom-left
+       sword (+ 40 w) 10
+       (rectangle 120 120 "solid" "transparent"))))
    (append
     (range 0 40 (/ 40 6))
     (build-list 4 (λ(n) 40))
@@ -57,7 +58,7 @@
    #t
    x 1 0 0
    (list
-    (atk (cons #f #f) #f mk-key (penis-fence colour)))
+    (atk (cons #f #f) #f mk-key (kick colour)))
    (dir-keys up-key left-key right-key)
    #f #f #f
    colour
