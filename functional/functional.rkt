@@ -10,19 +10,19 @@
     [(game-state p1 p2)
      (place-bottom-left
       (get-frame p1)
-      (player-x p1)
+      (- (player-x p1) (/ 120 2))
       (player-y p1)
       (place-bottom-left
        (get-frame p2)
-       (player-x p2)
+       (- (player-x p2) (/ 120 2))
        (player-y p2)
-       (empty-scene W H)))]))
+       (empty-scene W 300)))]))
 
-(define (move-players state)
+(define (act-players state)
   (match state
     [(game-state p1 p2)
-     (game-state (move p1 (player-x p2))
-                 (move p2 (player-x p1)))]))
+     (game-state (act p1 (player-x p2))
+                 (act p2 (player-x p1)))]))
 
 (define ((send-key val) state key)
   (match state
@@ -36,7 +36,7 @@
         (- (/ W 2) 100) "s" "w" "a" "d" "aquamarine")
        (make-player
         (+ (/ W 2) 100) "k" "i" "j" "l" "medium gray"))
-    (on-tick move-players 1/60)
+    (on-tick act-players 1/60)
     (on-key (send-key #t))
     (on-release (send-key #f))
     (to-draw draw-players)))

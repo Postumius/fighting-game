@@ -1,7 +1,9 @@
 #lang racket
 (require 2htdp/image lang/posn)
 
-(provide place-bottom-left rectangles-overlap?)
+
+
+(provide place-bottom-left boxes-overlap?)
 
 (define/contract (place-bottom-left image x y scene)
   (-> image? real? real? image? image?)
@@ -20,12 +22,15 @@
       (val-in-range? (+ q0 qw) r0 rw)
       (val-in-range? r0 q0 qw)))
 
-(define/contract (rectangles-overlap? x1 y1 rec1 x2 y2 rec2)
-  (-> real? real? image? real? real? image? boolean?)
+(struct htbox (x y w h))
+(define/contract (boxes-overlap? box1 box2)
+  (-> htbox? htbox? boolean?)
   (and (ranges-overlap?
-        x1 (image-width rec1) x2 (image-width rec2))
+        (htbox-x box1) (htbox-w box1)
+        (htbox-x box2) (htbox-w box2)
        (ranges-overlap?
-        y1 (image-height rec1) y2 (image-height rec2))))
+        (htbox-y box1) (htbox-h box1)
+        (htbox-y box2) (htbox-h box2)))))
         
 
 (define sc (empty-scene 600 300))

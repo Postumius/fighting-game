@@ -5,13 +5,17 @@
          "../geometry.rkt"
          racket/promise)
 
-(provide W H player-x player-y player-up make-player get-frame
-         read-key move)
+(provide W player-x player-y player-up make-player get-frame
+         read-key act)
 
 ;these constants define the size of the canvas
 (define W 600)
-(define H 300)
 
+
+;constants for this character
+(define coll-w 20)
+(define Vxmax 2)
+(define coll-h 80)
 
 ;standing model
 (define (standing colour)
@@ -51,8 +55,12 @@
    colour
    anim))
 
-(define
+;initialize a player
+(define/contract
   (make-player x mk-key up-key left-key right-key colour)
+  (-> real?
+      key-event? key-event? key-event? key-event?
+      image-color? player?)
   (player
    'stand
    #t
@@ -114,23 +122,23 @@
 
 
 ;move the player and change states
-(define/contract (move p other-x)
+(define/contract (act p other)
   (-> player? real? player?)
   
   (define (update-facing)
     (define x (player-x p))
+    (define other-x (player-x other))
     (case (player-facing p)
       [(#t) (if (<= x other-x)
                 #t #f)]
       [(#f) (if (<= other-x x)
                 #f #t)]))
   (define horiz-socd
-    (delay
-      (multi-match
+    (multi-match
        ((player-left p) (player-right p))
        [(#t #f) -1]
        [(#f #t) 1]
-       [(_ _) 0])))
+       [(_ _) 0]))
   (define (vert-socd)
     (multi-match
      ((player-up p) 'todo-put-down-here)
@@ -145,21 +153,22 @@
         (struct-copy
          player p
          [state 'animate]
-         [anim (atk-anim attack)]
+         [Vx 0]
+         [anim (atk-anim attack)]         
          [atks (map (λ (attack)
                       (struct-copy atk attack [state #f]))
                     (player-atks p))])]
        [(= (vert-socd) 1)
         (struct-copy
          player p
-         [Vx (* 2 (force horiz-socd))]
+         [Vx (* 2 (horiz-socd))]
          [Vy 10]
          [state 'jump])]
        [else
         (struct-copy*
          player p
          [facing (update-facing)]
-         [Vx (* 2 (force horiz-socd))]
+         [Vx (* 2 (horiz-socd))]
          [x (+ (player-x p) (player-Vx p))])])]
 
     ['jump
