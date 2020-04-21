@@ -6,7 +6,7 @@
          racket/promise)
 
 (provide W player-x player-y player-up make-player get-frame
-         read-key act)
+         read-key act move)
 
 ;these constants define the size of the canvas
 (define W 600)
@@ -121,19 +121,10 @@
          [atks (read-atks (player-atks p))])])]))
 
 
-;move the player and change states
-(define/contract (act p other)
-  (-> player? real? player?)
-  
-  (define (update-facing)
-    (define x (player-x p))
-    (define other-x (player-x other))
-    (case (player-facing p)
-      [(#t) (if (<= x other-x)
-                #t #f)]
-      [(#f) (if (<= other-x x)
-                #f #t)]))
-  (define horiz-socd
+;change states depending on input
+(define/contract (act p)
+  (-> player? player?) 
+  (define (horiz-socd)
     (multi-match
        ((player-left p) (player-right p))
        [(#t #f) -1]
@@ -165,26 +156,17 @@
          [Vy 10]
          [state 'jump])]
        [else
-        (struct-copy*
-         player p
-         [facing (update-facing)]
-         [Vx (* 2 (horiz-socd))]
-         [x (+ (player-x p) (player-Vx p))])])]
-
+        (struct-copy
+         player p      
+         [Vx (* 2 (horiz-socd))])])]
     ['jump
-     (cond
-       [(and (<= (player-y p) 1) (<= (player-Vy p) 0))
-        (struct-copy
-         player p
-         [y 1]
-         [Vy 0]
-         [state 'stand])]
-       [else
-        (struct-copy
-         player p
-         [x (+ (player-x p) (player-Vx p))]
-         [y (+ (player-y p) (player-Vy p))]
-         [Vy (- (player-Vy p) 1)])])]
+     (if (and (<= (player-y p) 1) (<= (player-Vy p) 0))
+         (struct-copy
+          player p
+          [y 1]
+          [Vy 0]
+          [state 'stand])
+         p)]
 
     ['animate
      (match (player-anim p)
@@ -197,5 +179,30 @@
         (struct-copy
          player p
          [anim next-frame-anim])])]))
+
+
+;move the player, with input from the other player
+(define/contract (move p other)
+  (-> player? player? player?)
+  (define (update-facing)
+    (case (player-facing p)
+      [(#t) (if (<= (player-x p) (player-x other))
+                #t #f)]
+      [(#f) (if (<= (player-x other) (player-x p))
+                #f #t)]))
+  
+  (case (player-state p)
+    ['stand
+     (struct-copy
+      player p
+      [facing (update-facing)]
+      [x (+ (player-x p) (player-Vx p))])]
+    ['jump
+     (struct-copy
+         player p
+         [x (+ (player-x p) (player-Vx p))]
+         [y (+ (player-y p) (player-Vy p))]
+         [Vy (- (player-Vy p) 1)])]
+    ['animate p]))
      
 

@@ -18,11 +18,11 @@
        (player-y p2)
        (empty-scene W 300)))]))
 
-(define (act-players state)
-  (match state
+(define (act-move state)
+  (match (game-state (act (game-state-p1 state))
+                     (act (game-state-p2 state)))
     [(game-state p1 p2)
-     (game-state (act p1 (player-x p2))
-                 (act p2 (player-x p1)))]))
+     (game-state (move p1 p2) (move p2 p1))]))
 
 (define ((send-key val) state key)
   (match state
@@ -36,7 +36,7 @@
         (- (/ W 2) 100) "s" "w" "a" "d" "aquamarine")
        (make-player
         (+ (/ W 2) 100) "k" "i" "j" "l" "medium gray"))
-    (on-tick act-players 1/60)
+    (on-tick act-move 1/60)
     (on-key (send-key #t))
     (on-release (send-key #f))
     (to-draw draw-players)))
