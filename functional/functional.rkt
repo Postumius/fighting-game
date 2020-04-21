@@ -10,11 +10,11 @@
     [(game-state p1 p2)
      (place-bottom-left
       (get-frame p1)
-      (- (player-x p1) (/ 120 2))
+      (- (player-x p1) 0);(/ 120 2))
       (player-y p1)
       (place-bottom-left
        (get-frame p2)
-       (- (player-x p2) (/ 120 2))
+       (- (player-x p2) 0);(/ 120 2))
        (player-y p2)
        (empty-scene W 300)))]))
 

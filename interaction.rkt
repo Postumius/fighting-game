@@ -1,6 +1,6 @@
 #lang racket
 
-(provide collision)
+(provide locate-collision)
 
 (struct htbox (x y w h))
 
@@ -30,4 +30,12 @@
         [(cons v2 v1)
          (cons v1 v2)])]
     [else cons v1 v2]))
+
+(define/contract (locate-collision x0 Vx u0 Vu)
+  (-> integer? integer? integer? integer? integer?)
+  (if (zero? Vx)
+      x0
+      (round
+       (/ (- u0 (* x0 (/ Vu Vx)))
+          (- 1 (/ Vu Vx))))))
 

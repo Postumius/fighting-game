@@ -3,7 +3,7 @@
 
 
 
-(provide place-bottom-left boxes-overlap?)
+(provide htbox place-bottom-left boxes-overlap?)
 
 (define/contract (place-bottom-left image x y scene)
   (-> image? real? real? image? image?)
@@ -27,10 +27,10 @@
   (-> htbox? htbox? boolean?)
   (and (ranges-overlap?
         (htbox-x box1) (htbox-w box1)
-        (htbox-x box2) (htbox-w box2)
+        (htbox-x box2) (htbox-w box2))
        (ranges-overlap?
         (htbox-y box1) (htbox-h box1)
-        (htbox-y box2) (htbox-h box2)))))
+        (htbox-y box2) (htbox-h box2))))
         
 
 (define sc (empty-scene 600 300))

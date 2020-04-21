@@ -3,6 +3,7 @@
 (require 2htdp/universe 2htdp/image lang/posn
          "../helper-macros.rkt"
          "../geometry.rkt"
+         "../interaction.rkt"
          racket/promise)
 
 (provide W player-x player-y player-up make-player get-frame
@@ -13,7 +14,7 @@
 
 
 ;constants for this character
-(define coll-w 20)
+(define coll-w 40)
 (define Vxmax 2)
 (define coll-h 80)
 
@@ -75,6 +76,12 @@
 (define p1
   (make-player
    0 "s" "w" "a" "d" "aquamarine"))
+(define p2
+  (struct-copy
+   player 
+   (make-player
+    100 "k" "i" "j" "l" "medium gray")
+   [facing #f]))
 
 (define/contract (get-frame p)
   (-> player? image?)
@@ -181,6 +188,49 @@
          [anim next-frame-anim])])]))
 
 
+(define (collision p other)  
+  (define (leading-edge->x edge)
+    (if (player-facing p)
+        (- edge coll-w)
+        edge))
+   (define (leading-edge p)
+    (if (player-facing p)
+        (+ (player-x p) coll-w)
+        (player-x p)))
+  (define x (player-x p))
+  (define Vx (player-Vx p))
+  (define u (player-x other))
+  (define Vu (player-Vx other))
+  (define dest (+ x Vx))
+  (define (towards? p)
+    (define Vx (player-Vx p))
+    (if (player-facing p)
+        (positive? Vx)
+        (negative? Vx)))
+  
+  (cond
+    [(= (leading-edge p) (leading-edge other))
+     (cond       
+       [(and (zero? Vx) (towards? other))
+        (+ x (/ Vu 2))]
+       [(and (towards? p) (zero? Vu))
+        (+ x (/ Vx 2))]
+       [(or (not (towards? p)) (not (towards? other)))
+        dest]
+       [else x])]
+    [(boxes-overlap?
+      (htbox dest (player-y p) coll-w coll-h)
+      (htbox (+ (player-x other) (player-Vx other))
+             (player-y other)
+             coll-w coll-h))
+     (leading-edge->x
+      (locate-collision
+       (leading-edge p) Vx
+       (leading-edge other) (player-Vx other)))]
+    [else dest]))
+ 
+
+
 ;move the player, with input from the other player
 (define/contract (move p other)
   (-> player? player? player?)
@@ -196,13 +246,15 @@
      (struct-copy
       player p
       [facing (update-facing)]
-      [x (+ (player-x p) (player-Vx p))])]
+      [x (collision p other)])]
     ['jump
      (struct-copy
          player p
          [x (+ (player-x p) (player-Vx p))]
          [y (+ (player-y p) (player-Vy p))]
          [Vy (- (player-Vy p) 1)])]
-    ['animate p]))
-     
+    ['animate
+     (struct-copy
+      player p
+      [x (collision p other)])]))
 
