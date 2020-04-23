@@ -4,19 +4,14 @@
          "../helper-macros.rkt"
          "../geometry.rkt"
          "../interaction.rkt"
-         racket/promise)
+         racket/promise
+         racket/generic)
 
-(provide W player-x player-y player-up make-player get-frame
-         read-key act move)
+(provide W player-x player-y player-up player-facing
+         make-player get-frame read-key intention move)
 
 ;these constants define the size of the canvas
 (define W 600)
-
-
-;constants for this character
-(define coll-w 40)
-(define Vxmax 2)
-(define coll-h 80)
 
 ;standing model
 (define (standing colour)
@@ -44,17 +39,32 @@
     (build-list 4 (λ(n) 40))
     (range 40 0 (-(/ 40 15))))))
 
+
+(define-generics character
+  [coll character]
+  [Vxmax character])
+
+;TODO: make atks a hash, put anims in character-specific array
 (struct atk (interrupt state key anim))
 (struct dir-keys (up left right) #:transparent)
-(struct player
-  (state
+
+(struct player  
+  (;fluid
+   state
    facing
    x y Vx Vy
    atks
-   dir-keys
    up left right
-   colour
-   anim))
+   anim
+
+   ;fixed   
+   dir-keys   
+   colour)
+  
+   #:methods gen:character
+   [(define (coll p)
+      (htbox (player-x p) (player-y p) 40 80))
+    (define (Vxmax p) 2)])
 
 ;initialize a player
 (define/contract
@@ -67,11 +77,11 @@
    #t
    x 1 0 0
    (list
-    (atk (cons #f #f) #f mk-key (kick colour)))
-   (dir-keys up-key left-key right-key)
+    (atk (cons #f #f) #f mk-key (kick colour)))   
    #f #f #f
-   colour
-   (list (standing colour))))
+   (list (standing colour))
+   (dir-keys up-key left-key right-key)
+   colour))
 
 (define p1
   (make-player
@@ -80,7 +90,7 @@
   (struct-copy
    player 
    (make-player
-    100 "k" "i" "j" "l" "medium gray")
+    40 "k" "i" "j" "l" "medium gray")
    [facing #f]))
 
 (define/contract (get-frame p)
@@ -129,7 +139,7 @@
 
 
 ;change states depending on input
-(define/contract (act p)
+(define/contract (intention p)
   (-> player? player?) 
   (define (horiz-socd)
     (multi-match
@@ -188,46 +198,62 @@
          [anim next-frame-anim])])]))
 
 
-(define (collision p other)  
-  (define (leading-edge->x edge)
-    (if (player-facing p)
-        (- edge coll-w)
-        edge))
-   (define (leading-edge p)
-    (if (player-facing p)
-        (+ (player-x p) coll-w)
-        (player-x p)))
-  (define x (player-x p))
-  (define Vx (player-Vx p))
-  (define u (player-x other))
-  (define Vu (player-Vx other))
-  (define dest (+ x Vx))
-  (define (towards? p)
-    (define Vx (player-Vx p))
-    (if (player-facing p)
-        (positive? Vx)
-        (negative? Vx)))
-  
-  (cond
-    [(= (leading-edge p) (leading-edge other))
-     (cond       
-       [(and (zero? Vx) (towards? other))
-        (+ x (/ Vu 2))]
-       [(and (towards? p) (zero? Vu))
-        (+ x (/ Vx 2))]
-       [(or (not (towards? p)) (not (towards? other)))
-        dest]
-       [else x])]
-    [(boxes-overlap?
-      (htbox dest (player-y p) coll-w coll-h)
-      (htbox (+ (player-x other) (player-Vx other))
-             (player-y other)
-             coll-w coll-h))
-     (leading-edge->x
-      (locate-collision
-       (leading-edge p) Vx
-       (leading-edge other) (player-Vx other)))]
-    [else dest]))
+;return the x position after collision
+(define (collision p other)
+  (let* ([leading-edge
+          (λ (p)
+            (if (player-facing p)
+                (+ (player-x p) (htbox-w (coll p)))
+                (player-x p)))]
+         [leading-edge->x
+          (λ (edge)
+            (if (player-facing p)
+                (- edge (htbox-w (coll p)))
+                edge))]       
+         [towards?
+          (λ (p)
+            (define Vx (player-Vx p))
+            (if (player-facing p)
+                (positive? Vx)
+                (negative? Vx)))]
+         [away?
+          (λ (p)
+            (and (not (towards? p))
+                 (not (zero? (player-Vx p)))))]
+         [abs-min
+          (λ (v1 v2)
+            (if (< (abs v1) (abs v2))
+                v1
+                v2))]        
+         [x (player-x p)]
+         [Vx (player-Vx p)]
+         [u (player-x other)]
+         [Vu (player-Vx other)]
+         [dest (+ x Vx)]
+         [push-against
+          (λ ()
+            (cond              
+              [(and (towards? p) (towards? other))
+               x]
+              [(and (towards? p) (zero? Vu))
+               (+ x (/ Vx 2))]
+              [(and (zero? Vx) (towards? other))
+               (+ x (/ Vu 2))]
+              [(and (towards? p) (away? other))
+               (+ x (min Vx Vu))]
+              [(or (not (towards? p)) (not (towards? other)))
+               dest]))])
+    (cond
+      [(= (leading-edge p) (leading-edge other))
+       (push-against)]
+      [(boxes-overlap?
+        (struct-copy htbox (coll p) [x dest])
+        (struct-copy htbox (coll other) [x (+ u Vu)]))                     
+       (leading-edge->x
+        (locate-collision
+         (leading-edge p) Vx
+         (leading-edge other) Vu))]
+      [else dest])))
  
 
 
