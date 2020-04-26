@@ -1,39 +1,38 @@
 #lang racket
 
 (require 2htdp/universe 2htdp/image
-         "../geometry.rkt" "player.rkt")
+         "../geometry.rkt" "player.rkt"
+         "../record.rkt")
 
-(struct game-state (p1 p2))
+;(struct game-state (p1 p2))
 
-(define (draw-players state)
-  (match state
-    [(game-state p1 p2)
-     (place-bottom-left
-      (get-frame p1)
-      (- (player-x p1) 0)
-      (player-y p1)
-      (place-bottom-left
-       (get-frame p2)
-       (- (player-x p2) 0)
-       (player-y p2)
-       (empty-scene W 300)))]))
+(define (draw-players state) 
+  (place-bottom-left
+   (get-frame (state 'p1))
+   (./ state 'p1 'x)
+   (./ state 'p1 'y)
+   (place-bottom-left
+    (get-frame (state 'p2))
+    (./ state 'p2 'x)
+    (./ state 'p2 'y)
+    (empty-scene W 300))))
 
 (define (act-move state)
-  (match (game-state (intention (game-state-p1 state))
-                     (intention (game-state-p2 state)))
-    [(game-state p1 p2)
-     (game-state (move p1 p2) (move p2 p1))]))
+  (define s (rec-upd state 'p1 intent 'p2 intent))
+  (s 'p1 (move (s 'p1) (s 'p2))
+     'p2 (move (s 'p2) (s 'p1))))
 
 (define ((send-key val) state key)
-  (match state
-  [(game-state p1 p2)
-   (game-state (read-key p1 key val) (read-key p2 key val))]))
+  (state 'p1 (read-key (state 'p1) key val)
+         'p2 (read-key (state 'p2) key val)))
 
 (define (run-game)
   (big-bang
-      (game-state
+      (make-record
+       'p1
        (make-player
         (- (/ W 2) 140) "s" "w" "a" "d" "aquamarine")
+       'p2
        (make-player
         (+ (/ W 2) 60) "k" "i" "j" "l" "medium gray"))
     (on-tick act-move 1/60)
