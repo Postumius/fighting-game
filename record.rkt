@@ -1,65 +1,52 @@
 #lang racket
 
-(define (make-hsh . ls)
-  (define inner (apply hasheq ls))
-  (case-lambda    
-      [() inner]
-      [(key) (hash-ref inner key)]
-      [(key v) (make-hsh (hash-set inner key v))]))
+(provide hash-record? make-record ./ rec-upd)
 
-(define h2 (make-hsh 'one 1 'two 2))
-
-(define (has-new-key? hsh keys-vals)
-  (define (rec kvs)
-    (match kvs
-      ['() #f]
-      [(cons k0 (cons v0 kv))
-       (if (hash-has-key? hsh k0)
-           (rec kv)
-           (list k0))]
-      [_ (raise-argument-error
-          'has-new-key?
-          (format "~a" '(λ (ls) (even? (length ls))))
-          keys-vals)]))
-  (rec keys-vals))
-
-(struct record (inner)
+(define-syntax-rule (check-keys who pred-datum keys-vals)
+  (begin
+    [define (rec kvs)
+      (match kvs
+        ['() (void)]
+        [(cons k0 (cons v0 kv))
+         (if (pred-datum k0)
+             (rec kv)
+             (raise-argument-error
+              who (format "~a" 'pred-datum) k0))]
+        [_ (raise-argument-error
+            who "a list of even length" keys-vals)])]
+  (rec keys-vals)))
+ 
+(struct hash-record (inner)
   #:property prop:procedure
   (case-lambda
-    [(r) (record-inner r)]
-    [(r key) (hash-ref (record-inner r) key)]
+    [(r) (hash-record-inner r)]
+    [(r key)
+     (if (symbol? key)
+         (hash-ref (hash-record-inner r) key)
+         (raise-argument-error 'record-ref "symbol?" key))]
     [(r . kvs)
-     (define new-key (has-new-key? (r) kvs))
-     (if new-key
-         (raise-argument-error
-          'record "a valid key"
-          (car new-key))
-         (record (apply hash-set* (r) kvs)))]))
+     (check-keys 'record-set (λ(k) (hash-has-key? (r) k)) kvs)
+     (hash-record (apply hash-set* (r) kvs))]))
 
-(define/contract (make-record . ls)
-  (->* () #:rest list? record?)
-  (record (apply hasheq ls)))
+(define (make-record . kvs)
+  (check-keys 'make-record symbol? kvs)
+  (hash-record (apply hasheq kvs)))
 
 (define/contract (./ r k . ks)
-  (->* (record? any/c) #:rest list? any/c)
+  (->* (hash-record? any/c) #:rest list? any/c)
   (if (empty? ks)
       (r k)
       (apply ./ (r k) (car ks) (cdr ks))))
 
 (define (rec-upd r k0 u0 . kus)
- (match kus
-       ['() (record (hash-update (record-inner r) k0 u0))]
+  (check-keys 'record-upd (λ(k) (hash-has-key? (r) k)) kus)
+  (match kus
+       ['() (hash-record (hash-update (hash-record-inner r) k0 u0))]
        [(cons k1 (cons u1 kus))
-        (apply rec-upd (rec-upd r k0 u0) k1 u1 kus)]
-       [_ (raise-argument-error
-           'rec-upd
-           (format "~a" '(λ (ls) (even? (length ls))))
-           kus)]))
+        (apply rec-upd (rec-upd r k0 u0) k1 u1 kus)]))
 
-(define d (make-record 1 'a 2 'b))
-
-(define r (make-record "1" 1 "2" 2))
+(define d (make-record 'one 'a 'two 'b))
 
 (define nested
-  (make-record 1 (make-record 2 'three)
-               2 (make-record 3 'four)))
+  (make-record 'one (make-record 'two 'three)
+               'two (make-record 'three 'four)))
