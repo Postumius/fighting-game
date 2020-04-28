@@ -18,7 +18,7 @@
     (empty-scene W 300))))
 
 (define (act-move state)
-  (define s (rec-upd state 'p1 intent 'p2 intent))
+  (define s ((record-upd 'p1 intent 'p2 intent) state))
   (s 'p1 (move (s 'p1) (s 'p2))
      'p2 (move (s 'p2) (s 'p1))))
 

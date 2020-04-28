@@ -1,6 +1,6 @@
 #lang racket
 
-(provide hash-record? make-record ./ rec-upd)
+(provide hash-record? make-record ./ record-upd)
 
 (define-syntax-rule (check-keys who pred-datum keys-vals)
   (begin
@@ -38,14 +38,28 @@
       (r k)
       (apply ./ (r k) (car ks) (cdr ks))))
 
-(define (rec-upd r k0 u0 . kus)
-  (check-keys 'record-upd (λ(k) (hash-has-key? (r) k)) kus)
+(define/contract ((record-upd k0 u0 . kus) r)
+  (([or/c symbol? (listof symbol?)] [-> any/c any/c])
+   #:rest list? . ->* . (-> hash-record? hash-record?))
   (match kus
-       ['() (hash-record (hash-update (hash-record-inner r) k0 u0))]
-       [(cons k1 (cons u1 kus))
-        (apply rec-upd (rec-upd r k0 u0) k1 u1 kus)]))
+    ['()
+     (match k0
+       ['() r]
+       [(cons k '()) ((record-upd k u0) r)]
+       [(cons k ks) ((record-upd k (record-upd ks u0)) r)]
+       [_
+        (hash-record
+         (hash-update (hash-record-inner r) k0 u0))])]
+    [(cons k1 (cons u1 kus))
+     ((apply record-upd k1 u1 kus) ((record-upd k0 u0) r))]))
 
-(define d (make-record 'one 'a 'two 'b))
+(define ((deep-upd keys updater) r)
+  (match keys
+    ['() r]
+    [(cons k '()) (record-upd r k updater)]
+    [(cons k ks) (record-upd r k (deep-upd ks updater))]))
+
+(define d (make-record 'one 1 'two 2))
 
 (define nested
   (make-record 'one (make-record 'two 'three)
