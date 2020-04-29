@@ -1,6 +1,6 @@
 #lang racket
 
-(require "./helper.rkt")
+(require "./helper.rkt" data/collection)
 
 (provide hash-record? make-record ./ record-upd)
 

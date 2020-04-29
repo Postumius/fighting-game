@@ -4,15 +4,13 @@
   2htdp/universe 2htdp/image lang/posn
   "./helper-macros.rkt" "./geometry.rkt"
   "./interaction.rkt" racket/promise
-  "./record.rkt")
+  "./record.rkt" data/collection
+  "./helper.rkt")
 
 (provide shine place-htboxes draw)
 
-(define (cycle val n)
-  (build-list n (λ(_) val)))
-
 (define (shine colour)
-  (cycle
+  (repeat-for
    (make-record
     'sprite (place-bottom-left
              (overlay (rotate -90 (triangle 20 "solid" "red"))
@@ -29,15 +27,15 @@
 (define (place-htboxes boxes colour background)
   [define (box->image b)
     (rectangle (b 'w) (b 'h) "solid" colour)]
-  [define (compose b img)
+  [define (compose img b)
     (place-bottom-left
      (box->image b) (b 'x) (b 'y)
      img)]
   (foldl compose background boxes))
 
 (define/contract (draw anim)
-  (-> (listof hash-record?) image?)
-  (define frame (car anim))
+  (-> (sequenceof hash-record?) image?)
+  (define frame (first anim))
   (place-htboxes
    (frame 'hit) (color 255 0 0 50)
    (place-htboxes
