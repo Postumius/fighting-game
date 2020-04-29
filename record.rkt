@@ -1,17 +1,19 @@
 #lang racket
 
+(require "./helper.rkt")
+
 (provide hash-record? make-record ./ record-upd)
 
-(define-syntax-rule (check-keys who pred-datum keys-vals)
+(define-syntax-rule (check-keys who pred keys-vals)
   (begin
     [define (rec kvs)
       (match kvs
         ['() (void)]
         [(cons k0 (cons v0 kv))
-         (if (pred-datum k0)
+         (if (pred k0)
              (rec kv)
              (raise-argument-error
-              who (format "~a" 'pred-datum) k0))]
+              who (format "~a" 'pred) k0))]
         [_ (raise-argument-error
             who "a list of even length" keys-vals)])]
   (rec keys-vals)))
@@ -25,7 +27,7 @@
          (hash-ref (hash-record-inner r) key)
          (raise-argument-error 'record-ref "symbol?" key))]
     [(r . kvs)
-     (check-keys 'record-set (λ(k) (hash-has-key? (r) k)) kvs)
+     (check-keys 'record-set (@ hash-has-key? (r)) kvs)
      (hash-record (apply hash-set* (r) kvs))]))
 
 (define (make-record . kvs)

@@ -6,29 +6,7 @@
   "./interaction.rkt" racket/promise
   "./record.rkt")
 
-;a kick animation
-(define (kick colour)
-  (map
-   (λ (w hit)
-     (make-record
-      'sprite
-      (place-bottom-left
-       (overlay (rotate -90 (triangle 20 "solid" "red"))
-                (rectangle 40 80 "solid" colour))
-       80 0
-       (place-bottom-left
-        (rectangle w 20 "solid" colour) 120 10
-        (rectangle 200 200 "solid" "transparent")))
-      'hit hit))
-   (append
-    (range 0 40 (/ 40 6))
-    (build-list 4 (λ(n) 40))
-    (range 40 0 (-(/ 40 15))))
-   (append
-    (build-list 6 (λ(_) empty))
-    (build-list
-     4 (λ(_) (list (make-record 'x 120 'y 0 'w 50 'h 40))))
-    (build-list 15 (λ(_) empty)))))
+(provide simple place-htboxes draw)
 
 (define (cycle val n)
   (build-list n (λ(_) val)))
@@ -54,7 +32,8 @@
      img)]
   (foldl compose background boxes))
 
-(define (draw anim)
+(define/contract (draw anim)
+  (-> (listof hash-record?) image?)
   (define frame (car anim))
   (place-htboxes
    (frame 'hit) (color 255 0 0 50)
