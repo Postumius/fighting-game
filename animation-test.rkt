@@ -6,12 +6,12 @@
   "./interaction.rkt" racket/promise
   "./record.rkt")
 
-(provide simple place-htboxes draw)
+(provide shine place-htboxes draw)
 
 (define (cycle val n)
   (build-list n (λ(_) val)))
 
-(define (simple colour)
+(define (shine colour)
   (cycle
    (make-record
     'sprite (place-bottom-left
@@ -19,8 +19,11 @@
                       (rectangle 40 80 "solid" colour))
              40 0
              (rectangle 120 120 "solid" "transparent"))
-    'hurt (list (make-record 'x 40 'y 0 'w 40 'h 80))
-    'hit (list (make-record 'x 30 'y 0 'w 60 'h 90)))
+    'hurt (list (make-record 'x 40 'y 0 'w 40 'h 80
+                             'freeze 10 'hitstun 20
+                             'pushback '30))
+    'hit (list (make-record 'x 30 'y 0 'w 60 'h 90))
+    'speed 3)
    10))
 
 (define (place-htboxes boxes colour background)
