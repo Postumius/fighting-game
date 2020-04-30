@@ -3,23 +3,22 @@
 (require
   2htdp/universe 2htdp/image lang/posn
   "./helper-macros.rkt" "./geometry.rkt"
-  "./interaction.rkt" racket/promise
-  "./record.rkt" data/collection
-  "./helper.rkt")
+  racket/promise "./record.rkt"
+  data/collection "./helper.rkt")
 
 (provide shine place-htboxes draw make-hurt-anim)
 
 (define (shine colour)
   (repeat-for
    (make-record
-    'sprite (place-bottom-left
+    'sprite (place-bottom-center
              (overlay (rotate -90 (triangle 20 "solid" "red"))
                       (rectangle 40 80 "solid" colour))
-             40 0
+             0 0
              (rectangle 120 120 "solid" "transparent"))
     'hurt (list (make-record
-                 'x 40 'y 0 'w 40 'h 80))
-    'hit (list (make-record 'x 30 'y 0 'w 60 'h 90
+                 'x 0 'y 0 'r 20 'h 80))
+    'hit (list (make-record 'x 0 'y 0 'r 30 'h 90
                             'on-hit (make-record
                                      'freeze 8 'hitstun 10
                                      'pushback 15)))
@@ -28,7 +27,7 @@
 
 (define (lean-back colour)
   (make-record
-   'sprite (place-bottom-left
+   'sprite (place-bottom-center
             (overlay
              (rotate -90 (triangle 20 "solid" "red"))
              (polygon (list (make-posn 0 0)
@@ -36,9 +35,9 @@
                             (make-posn 50 80)
                             (make-posn 10 80))
                     "solid" colour))
-            30 0
+            0 0
             (rectangle 120 120 "solid" "transparent"))
-   'hurt (list (make-record 'x 30 'y 0 'w 50 'h 80))
+   'hurt (list (make-record 'x 0 'y 0 'r 25 'h 80))
    'hit empty
    'speed 0))
 
@@ -62,9 +61,9 @@
 
 (define (place-htboxes boxes colour background)
   [define (box->image b)
-    (rectangle (b 'w) (b 'h) "solid" colour)]
+    (rectangle (* 2 (b 'r)) (b 'h) "solid" colour)]
   [define (compose img b)
-    (place-bottom-left
+    (place-bottom-center
      (box->image b) (b 'x) (b 'y)
      img)]
   (foldl compose background boxes))
