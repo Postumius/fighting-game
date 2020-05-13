@@ -1,6 +1,6 @@
 #lang racket
 
-(provide multi-match struct-copy*)
+(provide struct-copy* struct-match-copy)
 
 (define-syntax multi-match
   (syntax-rules ()    
@@ -23,4 +23,14 @@
              struct-id id
              [field-id0 val0])])
        (struct-copy* struct-id id [field-id1 val1] ...))]))
+
+(define-syntax-rule
+  (struct-match-copy
+   id name
+   [fid expr] ...)
+  (match name
+    [(struct* id ([fid fid] ...))
+     (struct-copy
+      id name
+      [fid expr] ...)]))
 

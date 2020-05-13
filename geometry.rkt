@@ -1,45 +1,32 @@
 #lang racket
-(require 2htdp/image lang/posn "record.rkt")
+(require racket/flonum "struct+/struct+.rkt")
 
-(provide place-bottom place-bottom-center
-         overlap? touch-horiz? locate-center)
-
-(define/contract (place-bottom image x y scene)
-  (-> image? real? real? image? image?)
-  (place-image
-   image
-   x
-   (- (image-height scene) (/ (image-height image) 2) y)
-   scene))
-
-(define/contract (place-bottom-center image x y scene)
-  (-> image? real? real? image? image?)
-  (place-image
-   image
-   (+ x (/ (image-width scene) 2))
-   (- (image-height scene) (/ (image-height image) 2) y)
-   scene))
+(provide overlap? touch-horiz? locate-center)
 
 
-;collision detection
-(define (center-radius-relation op b1 b2)
-  ((abs (- (b1 'x) (b2 'x))) . op . (+ (b1 'r) (b2 'r))))
+;helper functions for collision detection
+(struct+ htbox (x y r h))
+
+(define (centers-radiis-relation op b1 b2)
+  ((round (flabs (fl- (b1 'x) (b2 'x))))
+   . op .
+   (round (fl+ (b1 'r) (b2 'r)))))
 
 (define (overlap-y b1 b2)
-  (<= (- (b1 'y) (b2 'h))
-      (b2 'y)
-      (+ (b1 'y) (b1 'h))))
+  (fl<= (fl- (b1 'y) (b2 'h))
+        (b2 'y)
+        (fl+ (b1 'y) (b1 'h))))
 
 (define/contract (overlap? b1 b2)
-  (-> hash-record? hash-record? boolean?)
-  (and (center-radius-relation <= b1 b2)
+  (-> htbox? htbox? boolean?)
+  (and (centers-radiis-relation fl<= b1 b2)
        (overlap-y b1 b2)))
 
 (define/contract (touch-horiz? b1 b2)
-  (-> hash-record? hash-record? boolean?)
-  (and (center-radius-relation = b1 b2)
+  (-> htbox? htbox? boolean?)
+  (and (centers-radiis-relation fl= b1 b2)
        (overlap-y b1 b2)))
 
 (define/contract (locate-center x0 x)
-  (-> integer? integer? integer?)
-  (round (+ x0 (/ (- x x0) 2))))
+  (-> flonum? flonum? flonum?)
+  (fl+ x0 (fl/ (fl- x x0) 2)))

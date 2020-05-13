@@ -3,26 +3,33 @@
 (require
   2htdp/universe 2htdp/image lang/posn
   "./helper-macros.rkt" "./geometry.rkt"
-  racket/promise "./record.rkt"
-  data/collection "./helper.rkt")
+  racket/promise "./struct+/struct+.rkt"
+  data/collection "./helper.rkt"
+  "image.rkt")
 
-(provide shine place-htboxes draw make-hurt-anim)
+(provide animation shine place-htboxes draw make-hurt-anim)
+
+(struct+ hurtbox x y r h)
+
+(struct+ on-hit)
+(struct+ hitbox (x y r h freeze hitstun pushback))
+
+(struct+ anim-frame (sprite hurt hit speed))
 
 (define (shine colour)
   (repeat-for
-   (make-record
-    'sprite (place-bottom-center
-             (overlay (rotate -90 (triangle 20 "solid" "red"))
-                      (rectangle 40 80 "solid" colour))
-             0 0
-             (rectangle 120 120 "solid" "transparent"))
-    'hurt (list (make-record
-                 'x 0 'y 0 'r 20 'h 80))
-    'hit (list (make-record 'x 0 'y 0 'r 30 'h 90
-                            'on-hit (make-record
-                                     'freeze 8 'hitstun 10
-                                     'pushback 15)))
-    'speed 3)
+   (anim-frame
+    (place-bottom-center
+     (overlay (rotate -90 (triangle 20 "solid" "red"))
+              (rectangle 40 80 "solid" colour))
+     0 0
+     (rectangle 120 120 "solid" "transparent"))
+    (list (htbox 0 0 20 80))
+    (list (htbox 0 0 30 90
+                       'on-hit (make-record
+                                'freeze 8 'hitstun 10
+                                'pushback 15)))
+    3)
    10))
 
 (define (lean-back colour)
