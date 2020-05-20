@@ -4,15 +4,16 @@
   2htdp/universe 2htdp/image lang/posn
   "./helper-macros.rkt" "./geometry.rkt"
   racket/promise "./struct+/struct+.rkt"
-  data/collection "./helper.rkt"
-  "image.rkt")
+  "./helper.rkt"
+  "image.rkt"
+  racket/flonum)
 
-(provide animation shine place-htboxes draw make-hurt-anim)
+(provide shine place-htboxes draw make-hurt-anim)
 
-(struct+ hurtbox x y r h)
+(struct+ hurtbox (x y r h))
 
-(struct+ on-hit)
-(struct+ hitbox (x y r h freeze hitstun pushback))
+(struct+ On-hit (freeze hitstun pushback))
+(struct+ hitbox (x y r h on-hit))
 
 (struct+ anim-frame (sprite hurt hit speed))
 
@@ -24,59 +25,63 @@
               (rectangle 40 80 "solid" colour))
      0 0
      (rectangle 120 120 "solid" "transparent"))
-    (list (htbox 0 0 20 80))
-    (list (htbox 0 0 30 90
-                       'on-hit (make-record
-                                'freeze 8 'hitstun 10
-                                'pushback 15)))
-    3)
+    (list (hurtbox 0 0 20 80))
+    (list (hitbox
+           0 0 30 90
+           (On-hit/keywords
+            #:freeze 8.0 #:hitstun 10.0 #:pushback 15.0)))
+    3.0)
    10))
 
 (define (lean-back colour)
-  (make-record
-   'sprite (place-bottom-center
-            (overlay
-             (rotate -90 (triangle 20 "solid" "red"))
-             (polygon (list (make-posn 0 0)
-                            (make-posn 40 0)
-                            (make-posn 50 80)
-                            (make-posn 10 80))
+  (anim-frame/keywords
+   #:sprite (place-bottom-center
+             (overlay
+              (rotate -90 (triangle 20 "solid" "red"))
+              (polygon (list (make-posn 0 0)
+                             (make-posn 40 0)
+                             (make-posn 50 80)
+                             (make-posn 10 80))
                     "solid" colour))
             0 0
             (rectangle 120 120 "solid" "transparent"))
-   'hurt (list (make-record 'x 0 'y 0 'r 25 'h 80))
-   'hit empty
-   'speed 0))
+   #:hurt (list (hurtbox 0 0 25 80))
+   #:hit empty
+   'speed 0.0))
 
 (define (slide-back d t)  
-  [define first-t (build-sequence t (λ(i) i))]
-  (reverse (map (o round (@ * -1 (/ d (foldl + 0 first-t))))
-                first-t)))
+  [define range-t (range 0.0 t 1.0)]
+  [define v-scale (fl/ d (apply fl+ range-t))]
+  (reverse (map (curry fl* -1.0 v-scale)
+                range-t)))
 
 (define/contract (make-hurt-anim hit colour)
-  (-> hash-record? image-color? (sequenceof hash-record?))
-  [define speeds (slide-back (hit 'pushback) (hit 'hitstun))]
-  (build-sequence
-   (+ (hit 'freeze) (hit 'hitstun))
-   (λ(i)
-     (cond
-       [(i . < . (hit 'freeze))
-        (lean-back colour)]
-       [else
-        ((lean-back colour)
-         'speed (nth speeds (- i (hit 'freeze))))]))))
+  (-> On-hit? image-color? (listof anim-frame?))
+  (match hit
+    [(struct* On-hit ([freeze frz] [hitstun stn] [pushback psh]))     
+     [define speeds (slide-back psh stn)]
+     (build-list
+      (fl+ frz stn)
+      (λ(i)
+        (cond
+          [(i . < . frz)
+           (lean-back colour)]
+          [else
+           (struct-set
+            (lean-back colour)
+            'speed (list-ref speeds (- i frz)))])))]))
 
 (define (place-htboxes boxes colour background)
   [define (box->image b)
     (rectangle (* 2 (b 'r)) (b 'h) "solid" colour)]
-  [define (compose img b)
+  [define (compose-img b img)
     (place-bottom-center
      (box->image b) (b 'x) (b 'y)
      img)]
-  (foldl compose background boxes))
+  (foldl compose-img background boxes))
 
 (define/contract (draw anim)
-  (-> (sequenceof hash-record?) image?)
+  (-> (listof anim-frame?) image?)
   (define frame (first anim))
   (place-htboxes
    (frame 'hit) (color 255 0 0 50)

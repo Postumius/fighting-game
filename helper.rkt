@@ -2,7 +2,7 @@
 
 (require data/collection)
 
-(provide o @ repeat-for finds)
+(provide repeat-for finds)
 
 (define/contract (o f . fs)
   ((procedure?) #:rest (listof procedure?) . ->* . procedure?)
@@ -16,7 +16,7 @@
   (λ rest (apply f (append args rest))))
 
 (define (repeat-for val n)
-  (build-sequence n (λ(_) val)))
+  (build-list n (λ(_) val)))
 
 ;WARNING: do not use on infinite sequence
 (define (finds pred seq)
