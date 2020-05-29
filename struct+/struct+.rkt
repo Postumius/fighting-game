@@ -2,8 +2,7 @@
 
 (require (for-syntax syntax/parse racket/syntax)
          syntax/parse/define
-         racket/generic
-         data/collection
+         racket/generic data/collection
          "keywords.rkt")
 
 (provide struct+ struct-set deep-ref deep-upd branch-upd)
@@ -11,6 +10,7 @@
 (define-generics symbol-access
   (struct-ref symbol-access sym)
   (struct-set symbol-access sym val))
+
 
 (define (raise-key-error name keys v)
   (raise-argument-error
@@ -54,15 +54,20 @@
                  (define/keywords (id/keywords fid ...)
                    (id fid ...)))))]))
 
+
 (define (single-upd s k f)
   (struct-set s k (f (struct-ref s k))))
 
-(define ((deep-upd ks f) s)
+(define/contract ((deep-upd ks f) s)
+  (-> (listof symbol?) (-> any/c any/c)
+      (-> struct? struct?))
   (match ks
     [(cons k '()) (single-upd s k f)]
     [(cons k ks) (single-upd s k (deep-upd ks f))]))
 
-(define ((branch-upd . kfs) s)  
+(define/contract ((branch-upd . kfs) s)
+  (->* () () #:rest (listof (or/c symbol? (-> any/c any/c)))
+       (-> struct? struct?))
   (match kfs
     [(list k f)
      (single-upd s k f)]

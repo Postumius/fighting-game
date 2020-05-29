@@ -8,25 +8,41 @@
   "image.rkt"
   racket/flonum)
 
-(provide shine place-htboxes draw make-hurt-anim)
+(provide shine place-htboxes draw make-hurt-anim
+         standing-anim
+         (struct-out Hurtbox)
+         (struct-out On-hit)
+         (struct-out Hitbox)
+         (struct-out Anim-frame))
 
-(struct+ hurtbox (x y r h))
+(struct+ Hurtbox (x y r h))
 
 (struct+ On-hit (freeze hitstun pushback))
-(struct+ hitbox (x y r h on-hit))
+(struct+ Hitbox (x y r h on-hit))
 
-(struct+ anim-frame (sprite hurt hit speed))
+(struct+ Anim-frame (sprite hurt hit speed))
+
+(define (standing-anim colour)
+  (Anim-frame/keywords
+   #:sprite (place-bottom-center
+            (overlay (rotate -90 (triangle 20 "solid" "red"))
+                     (rectangle 40 80 "solid" colour))
+            0 0
+            (rectangle 120 120 "solid" "transparent"))
+   #:hurt (list (Hurtbox 0 0 20 80))
+   #:hit empty
+   #:speed 0))
 
 (define (shine colour)
   (repeat-for
-   (anim-frame
+   (Anim-frame
     (place-bottom-center
      (overlay (rotate -90 (triangle 20 "solid" "red"))
               (rectangle 40 80 "solid" colour))
      0 0
      (rectangle 120 120 "solid" "transparent"))
-    (list (hurtbox 0 0 20 80))
-    (list (hitbox
+    (list (Hurtbox 0 0 20 80))
+    (list (Hitbox
            0 0 30 90
            (On-hit/keywords
             #:freeze 8.0 #:hitstun 10.0 #:pushback 15.0)))
@@ -34,7 +50,7 @@
    10))
 
 (define (lean-back colour)
-  (anim-frame/keywords
+  (Anim-frame/keywords
    #:sprite (place-bottom-center
              (overlay
               (rotate -90 (triangle 20 "solid" "red"))
@@ -45,7 +61,7 @@
                     "solid" colour))
             0 0
             (rectangle 120 120 "solid" "transparent"))
-   #:hurt (list (hurtbox 0 0 25 80))
+   #:hurt (list (Hurtbox 0 0 25 80))
    #:hit empty
    'speed 0.0))
 
@@ -56,7 +72,7 @@
                 range-t)))
 
 (define/contract (make-hurt-anim hit colour)
-  (-> On-hit? image-color? (listof anim-frame?))
+  (-> On-hit? image-color? (listof Anim-frame?))
   (match hit
     [(struct* On-hit ([freeze frz] [hitstun stn] [pushback psh]))     
      [define speeds (slide-back psh stn)]
@@ -71,6 +87,10 @@
             (lean-back colour)
             'speed (list-ref speeds (- i frz)))])))]))
 
+(define (stand-anim colour)
+  (Anim-frame/keywords
+   ))
+
 (define (place-htboxes boxes colour background)
   [define (box->image b)
     (rectangle (* 2 (b 'r)) (b 'h) "solid" colour)]
@@ -81,7 +101,7 @@
   (foldl compose-img background boxes))
 
 (define/contract (draw anim)
-  (-> (listof anim-frame?) image?)
+  (-> (listof Anim-frame?) image?)
   (define frame (first anim))
   (place-htboxes
    (frame 'hit) (color 255 0 0 50)
