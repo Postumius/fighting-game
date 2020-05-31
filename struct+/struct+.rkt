@@ -26,7 +26,9 @@
          (struct id (fid ...)
            #:transparent
            #:property prop:procedure
-           (λ(s k) (struct-ref s k))
+           (case-lambda
+             [(s k) (struct-ref s k)]
+             [(s k v) (struct-set s k v)])
            #:methods gen:symbol-access
            [(define (struct-ref s k)
               (case k

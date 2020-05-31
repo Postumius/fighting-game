@@ -7,7 +7,7 @@
              racket/function
              racket/syntax))
 
-(provide define/keywords)
+(provide define/keywords define/contract/keywords)
 
 (define-for-syntax syntax->keyword
   (compose string->keyword symbol->string syntax->datum))

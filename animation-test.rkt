@@ -11,6 +11,7 @@
 (provide shine place-htboxes draw make-hurt-anim
          standing-anim
          (struct-out Hurtbox)
+         Hurtbox/keywords
          (struct-out On-hit)
          (struct-out Hitbox)
          (struct-out Anim-frame))
