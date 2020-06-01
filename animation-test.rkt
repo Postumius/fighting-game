@@ -30,9 +30,9 @@
                      (rectangle 40 80 "solid" colour))
             0 0
             (rectangle 120 120 "solid" "transparent"))
-   #:hurt (list (Hurtbox 0 0 20 80))
+   #:hurt (list (Hurtbox 0. 0. 20. 80.))
    #:hit empty
-   #:speed 0))
+   #:speed 0.))
 
 (define (shine colour)
   (repeat-for
@@ -42,9 +42,9 @@
               (rectangle 40 80 "solid" colour))
      0 0
      (rectangle 120 120 "solid" "transparent"))
-    (list (Hurtbox 0 0 20 80))
+    (list (Hurtbox 0. 0. 20. 80.))
     (list (Hitbox
-           0 0 30 90
+           0. 0. 30. 90.
            (On-hit/keywords
             #:freeze 8.0 #:hitstun 10.0 #:pushback 15.0)))
     3.0)
@@ -62,9 +62,9 @@
                     "solid" colour))
             0 0
             (rectangle 120 120 "solid" "transparent"))
-   #:hurt (list (Hurtbox 0 0 25 80))
+   #:hurt (list (Hurtbox 0. 0. 25. 80.))
    #:hit empty
-   'speed 0.0))
+   #:speed 0.0))
 
 (define (slide-back d t)  
   [define range-t (range 0.0 t 1.0)]
@@ -72,13 +72,15 @@
   (reverse (map (curry fl* -1.0 v-scale)
                 range-t)))
 
+(define chop (compose inexact->exact round))
+
 (define/contract (make-hurt-anim hit colour)
   (-> On-hit? image-color? (listof Anim-frame?))
   (match hit
     [(struct* On-hit ([freeze frz] [hitstun stn] [pushback psh]))     
      [define speeds (slide-back psh stn)]
      (build-list
-      (fl+ frz stn)
+      (chop (fl+ frz stn))
       (λ(i)
         (cond
           [(i . < . frz)
@@ -86,11 +88,8 @@
           [else
            (struct-set
             (lean-back colour)
-            'speed (list-ref speeds (- i frz)))])))]))
+            'speed (list-ref speeds (chop (- i frz))))])))]))
 
-(define (stand-anim colour)
-  (Anim-frame/keywords
-   ))
 
 (define (place-htboxes boxes colour background)
   [define (box->image b)

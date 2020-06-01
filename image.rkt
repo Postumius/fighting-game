@@ -1,6 +1,7 @@
 #lang racket
 
-(require 2htdp/image)
+(require 2htdp/image
+         racket/flonum)
 
 (provide place-bottom place-bottom-center)
 

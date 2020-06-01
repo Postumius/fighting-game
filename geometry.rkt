@@ -5,7 +5,7 @@
 
 
 ;helper functions for collision detection
-(struct+ htbox (x y r h))
+;(struct+ htbox (x y r h))
 
 (define (centers-radiis-relation op b1 b2)
   ((round (flabs (fl- (b1 'x) (b2 'x))))
@@ -18,15 +18,15 @@
         (fl+ (b1 'y) (b1 'h))))
 
 (define/contract (overlap? b1 b2)
-  (-> htbox? htbox? boolean?)
+  (-> struct? struct? boolean?)
   (and (centers-radiis-relation fl<= b1 b2)
        (overlap-y b1 b2)))
 
 (define/contract (touch-horiz? b1 b2)
-  (-> htbox? htbox? boolean?)
+  (-> struct? struct? boolean?)
   (and (centers-radiis-relation fl= b1 b2)
        (overlap-y b1 b2)))
 
 (define/contract (locate-center x0 x)
   (-> flonum? flonum? flonum?)
-  (fl+ x0 (fl/ (fl- x x0) 2)))
+  (fl+ x0 (fl/ (fl- x x0) 2.)))
