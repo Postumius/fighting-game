@@ -19,7 +19,7 @@
 (struct+ Hurtbox (x y r h))
 
 (struct+ On-hit (freeze hitstun pushback))
-(struct+ Hitbox (x y r h on-hit))
+(struct+ Hitbox (x y r h on-hit on-block))
 
 (struct+ Anim-frame (sprite hurt hit speed))
 
@@ -43,10 +43,14 @@
      0 0
      (rectangle 120 120 "solid" "transparent"))
     (list (Hurtbox 0. 0. 20. 80.))
-    (list (Hitbox
-           0. 0. 30. 90.
-           (On-hit/keywords
-            #:freeze 8.0 #:hitstun 10.0 #:pushback 15.0)))
+    (list (Hitbox/keywords
+           #:x 0. #:y 0. #:r 30. #:h 90.
+           #:on-hit (On-hit/keywords
+                     #:freeze 8.0 #:hitstun 10.0
+                     #:pushback 15.0)
+           #:on-block (On-hit/keywords
+                       #:freeze 8.0 #:hitstun 5.0
+                       #:pushback 10.0)))
     3.0)
    10))
 
