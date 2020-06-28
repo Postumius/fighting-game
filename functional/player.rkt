@@ -12,10 +12,10 @@
          "../struct+/keywords.rkt"
          racket/flonum)
 
-(provide W make-player get-frame read-key intent move)
+(provide W make-player get-frame read-key intent act)
 
 (define W 600.)
-(define BLOCK-DISTANCE 100)
+(define BLOCK-DISTANCE 100.)
 
 (define sword (bitmap "./resources/bitmaps/sword.png"))
 
@@ -134,14 +134,13 @@
 
 ;change states depending on input
 (define/contract (intent p)
-  (-> Player? Player?) 
-  
+  (-> Player? Player?)   
   [define attack (finds (λ(a) (a 'state)) (p 'atks))]
   [define (new-Vx p)
        (fl* (deep-ref p '(char Vxmax)) (horiz-socd p))]
   
   (case (p 'state)
-    ['stand     
+    [(stand block)
      (cond
        [attack
         (struct-match-copy
@@ -170,7 +169,7 @@
           [state 'stand])
          p)]
 
-    [('animate 'attack)
+    [(animate attack)
      (match (p 'anim)
        [(sequence _)
         (struct-copy
@@ -185,29 +184,31 @@
          [Vx (let ([speed ((first next-frame-anim) 'speed)])
                (if (p 'facing) speed (fl* -1. speed)))])])]))
 
-(define (towards-facing p other)
+(define/contract (towards-facing p other)
+  (-> Player? Player? boolean?)
     (case (p 'facing)
       [(#t) ((p 'x) . fl<= . (other 'x))]
-      [(#f) ((other 'x) . fl<= . (p 'x))]))
+      [(#f) (not ((other 'x) . fl<= . (p 'x)))]))
 
 ;get the x position after collision
-(define (collision p other)
+(define (collision-move p other)
   [define (leading-edge facing collbox)
     ((if facing fl+ fl-) (collbox 'x) (collbox 'r))]
   [define (leading-edge->x edge facing collbox)
     ((if facing fl- fl+) edge (collbox 'r))]
-  [define (moving-in? p)   
-    (if (p 'facing)
+  [define (moving-in? p p-towards)   
+    (if p-towards
         (positive? (p 'Vx))
         (negative? (p 'Vx)))]
-  [define (away? p)   
-    (and (not (moving-in? p))
+  [define (away? p p-towards)   
+    (and (not (moving-in? p p-towards))
          (not (zero? (p 'Vx))))]
   [define (abs-min v1 v2)
     (if (fl< (flabs v1) (flabs v2))
         v1
         v2)]
-  [define front (p 'facing)]
+  [define p-towards (towards-facing p other)]
+  [define other-towards (towards-facing other p)]
   [define x (p 'x)]
   [define Vx (p 'Vx)]
   [define u (other 'x)]
@@ -215,15 +216,17 @@
   [define dest (fl+ x Vx)]  
   [define (push-against)   
     (cond              
-      [(and (moving-in? p) (moving-in? other))
+      [(and (moving-in? p p-towards)
+            (moving-in? other other-towards))
        (fl+ x Vx Vu)]
-      [(and (moving-in? p) (zero? Vu))
+      [(and (moving-in? p p-towards) (zero? Vu))
        (fl+ x (round (fl/ Vx 2.)))]
-      [(and (zero? Vx) (moving-in? other))
+      [(and (zero? Vx) (moving-in? other other-towards))
        (fl+ x (round (fl/ Vu 2.)))]
-      [(and (moving-in? p) (away? other))
+      [(and (moving-in? p p-towards) (away? other other-towards))
        (fl+ x (min Vx Vu))]
-      [(or (not (moving-in? p)) (not (moving-in? other)))
+      [(or (not (moving-in? p p-towards))
+           (not (moving-in? other other-towards)))
        dest])]
   [define (coll p)
     (Hurtbox/keywords
@@ -238,24 +241,25 @@
       ((coll other) 'x (fl+ u Vu)))
      (leading-edge->x      
       (locate-center
-       (leading-edge front (coll p))
-       (leading-edge (not front) (coll other)))
-      front
+       (leading-edge p-towards (coll p))
+       (leading-edge (not p-towards) (coll other)))
+      p-towards
       (coll p))]
     [else dest]))
 
 (define/contract (turn-towards p other)
   (-> Player? Player? Player?)
-  (struct-match-copy
-   Player p
-   [facing
-    (case facing
-      [(#t) ((p 'x) . fl<= . (other 'x))]
-      [(#f) ((other 'x) . fl<= . (p 'x))])]))
+  (case (p 'state)
+    [(stand block)
+     (struct-copy
+      Player p
+      [facing (towards-facing p other)])]
+    [else p]))
 
 (define/contract (block p other)
   (-> Player? Player? Player?)
-  (if (and (eq? (p 'state) 'stand)
+  (if (and (or (eq? (p 'state) 'stand)
+               (eq? (p 'state) 'block))
            ((if (p 'facing) negative? positive?) (horiz-socd p))
            (eq? (other 'state) 'attack)
            ((flabs (fl- (p 'x) (other 'x)))
@@ -263,7 +267,7 @@
       (struct-copy
        Player p
        [state 'block]
-       [Vx 0])
+       [Vx 0.])
       p))
 
 (define/contract (locate-boxes p type)
@@ -279,39 +283,43 @@
     (filter (λ(b) (finds (curry overlap? b) cs)) bs)]
   [define hurts (find-overlaps (locate-boxes other 'hit) ;to do: only need first in list
                                (locate-boxes p 'hurt))]  
-  [define towards (towards-facing p other)]
-  [define is-blocking
-    (and (eq? (p 'state) 'stand)
-         ((if towards negative? positive?) (horiz-socd p))
-         (eq? (other 'state) 'attack)
-         ((flabs (fl- (p 'x) (other 'x)))
-          . fl< . BLOCK-DISTANCE))]
   
-  (if (not (empty? hurts))
-      (struct-copy
-       Player p
-       [state 'animate]
-       [anim (make-hurt-anim
-              ((first hurts)
-               (if is-blocking 'on-block 'on-hit))
-              (deep-ref p '(fixed colour)))]
-       [Vx 0.]
-       [Vy 0.])
-      (case (p 'state)
-        [(stand)        
-         (struct-copy
-          Player p-turned
-          [state 'stand]
-          [anim (list (standing-anim
-                       (deep-ref p '(fixed colour))))]
-          [x (collision p other)])]
-        ['jump
-         (struct-match-copy
-          Player p
-          [x (collision p other)]
-          [y (round (fl+ y Vy))]
-          [Vy (fl- Vy (deep-ref p '(char gravity)))])]
-        ['attack
-         (struct-copy
-          Player p
-          [x (collision p other)])])))
+  (cond
+    [(not (empty? hurts))
+     (struct-copy
+      Player p
+      [state 'animate]
+      [anim (make-hurt-anim
+             ((first hurts)
+              (if (eq? (p 'state) 'block)
+                  'on-block
+                  'on-hit))
+             (deep-ref p '(fixed colour)))]
+      [Vx 0.]
+      [Vy 0.])]
+    [else
+     (case (p 'state)
+       [(stand block)
+        (struct-copy
+         Player p
+         [anim (list (standing-anim
+                      (deep-ref p '(fixed colour))))]
+         [x (collision-move p other)])]
+       [(jump)
+        (struct-match-copy
+         Player p
+         [x (collision-move p other)]
+         [y (round (fl+ y Vy))]
+         [Vy (fl- Vy (deep-ref p '(char gravity)))])]
+       [(attack animate)
+        (struct-copy
+         Player p
+         [x (collision-move p other)])])]))
+
+(define (act p other)
+  (move
+   (block
+    (turn-towards
+     p other)
+    other)
+   other))

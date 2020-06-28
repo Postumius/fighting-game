@@ -18,11 +18,11 @@
        (get-frame p2) (p2 'x) (p2 'y)
        (empty-scene W 300.)))]))
 
-(define (act-move state)
+(define (intent-act state)
   (struct-match-copy
    Game-state ((branch-upd 'p1 intent 'p2 intent) state)
-   [p1 (move p1 p2)]
-   [p2 (move p2 p1)]))
+   [p1 (act p1 p2)]
+   [p2 (act p2 p1)]))
 
 (define ((send-key val) state key)
   ((branch-upd 'p1 (curryr read-key key val)
@@ -33,12 +33,12 @@
   (big-bang
       (Game-state
        (make-player
-        #:x -100 #:mk-key "s" #:up-key "w"
+        #:x -100. #:mk-key "s" #:up-key "w"
         #:left-key "a" #:right-key "d" #:colour "aquamarine")
        (make-player
-        #:x 100 #:mk-key "k" #:up-key "i"
+        #:x 100. #:mk-key "k" #:up-key "i"
         #:left-key "j" #:right-key "l" #:colour "medium gray"))
-    (on-tick act-move (fl/ 1. 60.))
+    (on-tick intent-act (fl/ 1. 60.))
     (on-key (send-key #t))
     (on-release (send-key #f))
     (to-draw draw-players)))
